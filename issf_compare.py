@@ -77,7 +77,7 @@ colors = ['pink', 'g', 'y']
 if True: 
     cs = np.linspace(0, 1/(1-alpha), 1000)
 
-    fig, axs = plt.subplots(1, n_plots, figsize=(100, n_plots))
+    fig, axs = plt.subplots(1, n_plots, figsize=(20, n_plots))
 
     for d_idx, dist in enumerate(dists): 
         ts, trajs = run_sim(dist)
@@ -88,7 +88,7 @@ if True:
             sum_quad_var = np.sum([alpha**(2*(k -i) ) for i in range(int(k))])
             sigma = sigma_step*np.sqrt(sum_quad_var) 
             hmin = alpha**k*h0 + sum([-alpha**i for i in range(int(k)) ]) 
-            hmin = min(hmin, 0 )
+            # hmin = min(hmin, 0 )
             ps = []
             p_unsafe = []
             
@@ -105,18 +105,21 @@ if True:
             
             axs[i].plot(-np.array(cs), p_unsafe, color = colors[d_idx], alpha = 1, marker=".", markersize=7.5, linestyle="")
             if dist == dists[-1]:
-                axs[i].plot([0, hmin, hmin, -cs[-1]],[1,1,0,0], 'r', linewidth=3)
+                if hmin < 0: 
+                    axs[i].plot([0, hmin, hmin, -cs[-1]],[1,1,0,0], 'r', linewidth=3)
+                else: 
+                    axs[i].plot([0, 0, 0, -cs[-1]],[0,0,0,0], 'r', linewidth=3)
                 axs[i].plot(-np.array(cs), ps, 'b', linewidth=3)
                 axs[i].set_ylim((-0.1, 1.1))
                 axs[i].set_title(f'K={int(k)}')
                 axs[i].set_xlabel('Level Set Value')
-                axs[i].set_aspect(cs[-1])
+                axs[i].set_aspect(cs[-1]*0.5)
                 axs[i].invert_xaxis()
         # axs[i].set_box_aspect(1)
 
     axs[0].set_ylabel('Safety Probability Lower Bound')
 
     # plt.show()
-    plt.show("temp.png")
-    # plt.savefig("issf_compare.svg")
+    # plt.show("temp.png")
+    plt.savefig("issf_compare.svg")
 
