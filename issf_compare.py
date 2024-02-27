@@ -23,7 +23,18 @@ def Pu_Hoeff(K, x, sigma):
             return 1 
     else: 
         return 0
-    
+
+
+def Pu_Freedman(x, sigma):
+    try:
+        frac1 = (sigma**2) / (x + sigma**2)
+        exp1 = (x + sigma**2)
+    except: 
+        breakpoint()
+    return frac1**exp1 * np.exp(x)
+
+def Pu(K,x,sigma):
+    return Pu_Freedman( x, sigma)
 
 # Run Simulation 
 n_steps = 400
@@ -98,7 +109,7 @@ if True:
                     if -c < hmin: 
                         ps.append(0)
                     else: 
-                        ps.append(Pu_Hoeff(k, lambduh, sigma))
+                        ps.append(Pu(k, lambduh, sigma))
                 unsafe = np.sum(trajs[:,:int(k)] < -c, axis = 1)
                 n_unsafe = np.sum(unsafe>0)
                 p_unsafe.append(n_unsafe/n_sims)
@@ -119,7 +130,6 @@ if True:
 
     axs[0].set_ylabel('Safety Probability Lower Bound')
 
-    # plt.show()
+    plt.show()
     # plt.show("temp.png")
-    plt.savefig("issf_compare.svg")
-
+    # plt.savefig("issf_compare.svg")
