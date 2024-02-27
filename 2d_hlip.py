@@ -24,7 +24,7 @@ def Pu_Hoeff(K, x, sigma):
 
 # Calculate HLIP Matrices
 z = 0.62 # Robot nominal z-height
-T_SSP = 0.3 # Time length of single support phase 
+T_SSP = 0.33 # Time length of single support phase 
 vel_x = 0.1 # Nominal velocity (?) 
 
 T_DSP = 0.0 # Double support phase time length 
@@ -83,6 +83,7 @@ B2D = np.block([[B_global, np.zeros((3,1))], [np.zeros((3,1)), B_global ]])
 x2D = np.block([[x_global],[x_global]])
 
 n_sims = 1000
+n_to_plot = 100
 
 # A2D = np.repeat(A2D[np.newaxis,:,:], repeats=n_sims, axis=0)
 # B2D = np.repeat(B2D[np.newaxis,:,:], repeats=n_sims, axis=0)
@@ -155,103 +156,108 @@ class circle_barrier():
         pts = np.array(pts)
         return pts 
 
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["font.size"] = 12
 
-
-T = 10
+noise_maxes = [0.001, 0.01, 0.05, 0.1]
+alphas = [0.9, 0.95, 0.999]
+T = 25
 n_steps = int(T/T_SSP) 
 print("N steps = " + str(n_steps))
-alpha = 0.995
-center = np.array([[1],[1]])
-plane = np.array([[1,0,0,0,0,0]])
+center = np.array([[1.5],[1]])
 radius = 1 * np.sqrt(2) - 0.5
-trunc_max = 0.08
-cbf = circle_barrier(radius, alpha, center)
-u_nom = np.array([[step_length]])
-traj = np.zeros((n_sims, 2, n_steps+1))
-hs = np.zeros((n_sims, 1, n_steps+1))
-v_des = 0.3
 
-# Starting positoin 
-x2D[:, 0,0] = 0
-x2D[:, 3,0] = 0
 
-v_des = np.array([[v_des], [v_des]])
-v_des = np.repeat(v_des[np.newaxis,:,:], repeats=n_sims, axis=0 )
+fig, axs = plt.subplots(2*len(alphas),len(noise_maxes))# gridspec_kw={'height_ratios':[4,1]},) 
 
-from scipy.stats import truncnorm        
-delta = np.linalg.norm(C2D@A2D) * np.linalg.norm(np.array([1,1,1,1,1,1])) * trunc_max
-sigma = np.sqrt(truncnorm.stats(-trunc_max, trunc_max,moments="v"))
-def step(x2D, step_length): 
-    v = truncnorm.rvs(-trunc_max, trunc_max,size=(n_sims, 6,1))
-    x_next = A2D @ x2D + B2D @ step_length  + v 
-    return x_next
+for alpha_number, alpha in enumerate(alphas): 
+    for sim_number, trunc_max in enumerate(noise_maxes):
+        # trunc_max = 0.05
+        v_dist_scale = 1
+        cbf = circle_barrier(radius, alpha, center)
+        u_nom = np.array([[step_length]])
+        traj = np.zeros((n_sims, 2, n_steps+1))
+        hs = np.zeros((n_sims, 1, n_steps+1))
+        v_des = 0.1
 
-# Simulate 
+        # Starting positoin 
+        x2D[:, 0,0] = 0
+        x2D[:, 3,0] = 0
 
-traj[:,:,0] = x2D[:,[0,3],0]
-hs[:,:,0] = cbf.val(x2D)
-h0 = hs[0,0,0]
-violations = hs*0 
-ts = [0]
-ps = [0]
-for i in range(n_steps): 
-    ell_vtracking = np.zeros((n_sims, 2,1))
-    ell_vtracking[:,0,0] = (v_des[:, 0,0] - (A2D[:3,:3] @ x2D[:, :3])[:,2,0])/B2D[2,0]
-    ell_vtracking[:,1,0] = (v_des[:, 1,0] - (A2D[3:,3:] @ x2D[:, 3:])[:,2,0])/B2D[5,1]
-    u_nom = ell_vtracking
+        v_des = np.array([[v_des], [v_des]])
+        v_des = np.repeat(v_des[np.newaxis,:,:], repeats=n_sims, axis=0 )
 
-    u = cbf.filter(x2D, u_nom)
-    x2D = step(x2D, u)
-    traj[:,:,i+1] = x2D[:,[0,3],0]
-    hs[:,:,i+1] = cbf.val(x2D)
 
-    violations[:,:,i+1] =  (hs[:,:,i+1] < 0) * ( 1 - violations[:,:,i]) + violations[:,:,i] # if the last was safe and the current is unsafe and if there was ever a previous unsafe
-    ts.append(T_SSP*(i+1))
-    p_bound = Pu_Hoeff(i+1,alpha**(i+1) * h0 / delta,  sigma * np.sqrt(i+1) / delta )
-    ps.append(p_bound)
-    # print(cbf.val(x_global), x_global)
+        from scipy.stats import truncnorm        
+        D = np.array([[1,0,0,0], 
+                    [1,0,0,0], 
+                    [0,1,0,0], 
+                    [0,0,1,0],
+                    [0,0,1,0],
+                    [0,0,0,1]])
+        delta = np.linalg.norm(np.eye(2)) * np.linalg.norm(np.array([1,1])) * trunc_max
+        sigma = np.sqrt(trunc_max**2/3)#np.sqrt(truncnorm.stats(-trunc_max, trunc_max,moments="v", scale = trunc_scale))
+        def step(x2D, step_length): 
+            # v = truncnorm.rvs(-trunc_max, trunc_max,size=(n_sims, 6,1), scale = trunc_scale)
+            v = np.random.uniform(-trunc_max,trunc_max,size=(n_sims,4,1))
+            v[:,1,0] = np.random.uniform(-trunc_max*v_dist_scale,trunc_max*v_dist_scale,size=(n_sims))
+            v[:,3,0] = np.random.uniform(-trunc_max*v_dist_scale,trunc_max*v_dist_scale,size=(n_sims))
+            x_next = A2D @ x2D + B2D @ step_length  + D@v 
+            return x_next
 
-violations = np.sum(violations, axis = 0 )
+        # Simulate 
 
-fig, axs = plt.subplots(3,1) 
-# Plot Percents
-axs[0].plot(ts, ps, 'b')
-axs[0].plot(ts, violations[0,:]/n_sims, 'r')
-print(violations[0,-1])
-# Plot hs 
-axs[1].plot(ts, np.swapaxes(hs[:,0,:], 0, 1), 'b', alpha = 0.1) 
-# Plot trajectory 
-pts = cbf.get_plot_points()
-axs[2].plot(pts[:,0], pts[:,1], 'r')
-axs[2].plot(np.swapaxes(traj[:,0,:],0,1), np.swapaxes(traj[:,1,:],0,1), color="b", alpha = 0.1 )
-axs[2].set_aspect("equal")
-plt.show()
+        traj[:,:,0] = x2D[:,[0,3],0]
+        hs[:,:,0] = cbf.val(x2D)
+        h0 = hs[0,0,0]
+        violations = hs*0 
+        ts = [0]
+        ps = [0]
+        for i in range(n_steps): 
+            ell_vtracking = np.zeros((n_sims, 2,1))
+            ell_vtracking[:,0,0] = (v_des[:, 0,0] - (A2D[:3,:3] @ x2D[:, :3])[:,2,0])/B2D[2,0]
+            ell_vtracking[:,1,0] = (v_des[:, 1,0] - (A2D[3:,3:] @ x2D[:, 3:])[:,2,0])/B2D[5,1]
+            u_nom = ell_vtracking
 
-# % Configuration variables
-# z = 0.62;
-# T_SSP = 0.3;
-# vel_x = 0.1;
+            u = cbf.filter(x2D, u_nom)
+            x2D = step(x2D, u)
+            traj[:,:,i+1] = x2D[:,[0,3],0]
+            hs[:,:,i+1] = cbf.val(x2D)
 
-# % Other constants
-# T_DSP = 0.0;
-# g = 9.81;
+            violations[:,:,i+1] =  (hs[:,:,i+1] < 0) * ( 1 - violations[:,:,i]) + violations[:,:,i] # if the last was safe and the current is unsafe and if there was ever a previous unsafe
+            ts.append(T_SSP*(i+1))
+            p_bound = Pu_Hoeff(i+1,alpha**(i+1) * h0 / delta,  sigma * np.sqrt(i+1) / delta )
+            ps.append(p_bound)
+            # print(cbf.val(x_global), x_global)
 
-# % Derives variables
-# lambda = sqrt(g / z);
-# step_length = vel_x * T_SSP;
-# eA_ssp = eAssp(T_SSP, lambda);
-# A_step = [1, T_DSP; 0, 1];
-# B_step = [-1; 0];
+        violations = np.sum(violations, axis = 0 )
 
-# % The step to step discrete dynamics
-# A = eA_ssp * A_step;
-# B = eA_ssp * B_step;
 
-# % Test if the results makes sense
-# sigma_1 = CalculateSigma1(lambda, T_SSP);
 
-# x_impact = zeros(2, 1);
-# x_impact(1) = vel_x * (T_SSP + T_DSP) / (2.0 + T_DSP * sigma_1);
-# x_impact(2) = sigma_1 * vel_x * (T_SSP + T_DSP) / (2.0 + T_DSP * sigma_1);
 
-# x_impact_next = A * x_impact + B * step_length;
+        # Plot Percents
+        axs[1 + 2 * alpha_number, sim_number].plot(ts, ps, 'b')
+        axs[1 + 2 * alpha_number, sim_number].plot(ts, violations[0,:]/n_sims, 'r')
+        axs[1 + 2 * alpha_number, sim_number].set_xlabel("time [sec]")
+        axs[1 + 2 * alpha_number, sim_number].set_ylabel("$P_u$")
+        axs[1 + 2 * alpha_number, sim_number].set_ylim((-0.05,1.05))
+        # axs[1 + 2 * alpha_number, sim_number].get_yaxis().set_visible(False)
+        # axs[1 + 2 * alpha_number, sim_number].get_xaxis().set_visible(False)
+        print(violations[0,-1])
+
+
+        # Plot trajectory 
+        pts = cbf.get_plot_points()
+        axs[0 + 2 * alpha_number, sim_number].plot(pts[:,0], pts[:,1], 'r')
+        axs[0 + 2 * alpha_number, sim_number].plot(np.swapaxes(traj[:n_to_plot,0,:],0,1), np.swapaxes(traj[:n_to_plot,1,:],0,1), color="b", alpha = 0.1 )
+        axs[0 + 2 * alpha_number, sim_number].set_aspect("equal")
+        axs[0 + 2 * alpha_number, sim_number].set_xlabel(r"$\mathbf{p}_x$")
+        axs[0 + 2 * alpha_number, sim_number].set_ylabel(r"$\mathbf{p}_y$")
+        axs[0 + 2 * alpha_number, sim_number].set_xlim((-1,3))
+        axs[0 + 2 * alpha_number, sim_number].set_ylim((-1,3))
+        # axs[0 + 2 * alpha_number, sim_number].get_yaxis().set_visible(False)
+        # axs[0 + 2 * alpha_number, sim_number].get_xaxis().set_visible(False)
+
+
+# plt.show()
+plt.savefig("hlip_plot.svg")
