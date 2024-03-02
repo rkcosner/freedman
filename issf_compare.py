@@ -104,7 +104,7 @@ if True:
             p_unsafe = []
             
             for c in cs: 
-                lambduh = alpha**k * (h0 + c ) +  alpha**(k-1)*c*( 1- alpha )
+                lambduh = alpha**k * (h0 + c ) 
                 if dist == "binary": 
                     if -c < hmin: 
                         ps.append(0)
