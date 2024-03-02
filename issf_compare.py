@@ -38,7 +38,7 @@ def Pu(K,x,sigma):
 
 # Run Simulation 
 n_steps = 400
-n_sims = 1000
+n_sims = 10
 h0 = 10
 alpha = 0.99
 p = 1/6
@@ -104,7 +104,7 @@ if True:
             p_unsafe = []
             
             for c in cs: 
-                lambduh = alpha**k * (h0 + c ) +  alpha**(k-1)*( 1- alpha ) 
+                lambduh = alpha**k * (h0 + c ) +  alpha**(k-1)*c*( 1- alpha )
                 if dist == "binary": 
                     if -c < hmin: 
                         ps.append(0)
