@@ -22,6 +22,19 @@ def Pu_Hoeff(K, x, sigma):
         return 0
 
 
+def Pu_Freedman(x, sigma):
+    try:
+        frac1 = (sigma**2) / (x + sigma**2)
+        exp1 = (x + sigma**2)
+    except: 
+        breakpoint()
+    return frac1**exp1 * np.exp(x)
+
+
+def Pu(K,x,sigma): 
+    return Pu_Freedman( x, sigma)
+
+
 # Calculate HLIP Matrices
 z = 0.62 # Robot nominal z-height
 T_SSP = 0.33 # Time length of single support phase 
@@ -226,7 +239,7 @@ for alpha_number, alpha in enumerate(alphas):
 
             violations[:,:,i+1] =  (hs[:,:,i+1] < 0) * ( 1 - violations[:,:,i]) + violations[:,:,i] # if the last was safe and the current is unsafe and if there was ever a previous unsafe
             ts.append(T_SSP*(i+1))
-            p_bound = Pu_Hoeff(i+1,alpha**(i+1) * h0 / delta,  sigma * np.sqrt(i+1) / delta )
+            p_bound = Pu(i+1,alpha**(i+1) * h0 / delta,  sigma * np.sqrt(i+1) / delta )
             ps.append(p_bound)
             # print(cbf.val(x_global), x_global)
 
@@ -260,4 +273,4 @@ for alpha_number, alpha in enumerate(alphas):
 
 
 # plt.show()
-plt.savefig("hlip_plot.svg")
+plt.savefig("plots/hlip_plot.svg")

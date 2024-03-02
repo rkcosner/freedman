@@ -131,5 +131,5 @@ if True:
     axs[0].set_ylabel('Safety Probability Lower Bound')
 
     plt.show()
-    # plt.show("temp.png")
-    # plt.savefig("issf_compare.svg")
+    # plt.show("plots/temp.png")
+    # plt.savefig("plots/issf_compare.svg")
