@@ -6,3 +6,4 @@ For the extended version of our paper with the full proofs, please see the ``ext
 
 
 [Link to Collab Notebook to recreate figures](https://colab.research.google.com/drive/1P9C6rZV25gYXGiyl-0TTXMMWlCCEK0Vi?usp=sharing)
+[Link to Extended Version](https://github.com/rkcosner/freedman)
